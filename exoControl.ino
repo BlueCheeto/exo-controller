@@ -39,10 +39,10 @@ void setup() {
 void loop() { // Super-Loop for CPM functionality
 
   // Setting forward/reverse duty cycle using FSR values
-  //pressureFeedback = (analogRead(FSRpin1)/1023.0)-(analogRead(FSRpin2)/1023.0);
+  pressureFeedback = (analogRead(FSRpin1)/1023.0)-(analogRead(FSRpin2)/1023.0);
 
   // Running motor
-  if (/*abs(pressureFeedback) > resistanceLevel ||*/ isRunning == false) {
+  if (abs(pressureFeedback) > resistanceLevel || isRunning == false) {
     vesc.setDuty(0.0); // stop motor
 
   } else {  
@@ -125,6 +125,10 @@ void loop() { // Super-Loop for CPM functionality
         Serial.println(romCount/(romTime/timeIncrement));
         SerialBluetooth.print(romCount);
       break;
+
+      //This setting allows the user to move the arm based on FSR data
+      case '6': break;
+
       default: break;
     } 
   }
