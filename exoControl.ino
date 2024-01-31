@@ -11,7 +11,7 @@ VescUart vesc;
 // CPM Parameters
 float resistanceLevel = 0.04;
 int minsDuration = 5;
-int romDegrees = 80;
+int romDegrees = 90;
 int romTime = 0;
 int romCount = 0;
 int repCount = 0;
@@ -21,8 +21,10 @@ int repCount = 0;
 unsigned long timeIncrement = 125UL;
 unsigned long timeLast = 0;
 float pressureFeedback = 0.0;
+float gearboxRatio = 90.0;
 float RPM = 3000.0;//240.0;
 bool isRunning = false;
+bool feedbackMode = false; //New feature
 
 // Device/Port initializations
 void setup() {
@@ -33,7 +35,8 @@ void setup() {
   delay(1000);
 
   Serial.println("Goodnight moon!");
-  romTime = (romDegrees / ((/*RPM*/ 480 / 60) * 4)) * 1000; // in millis
+  //romTime = (romDegrees / ((/*RPM*/ 480 / 60) * 4)) * 1000; // in millis
+  romTime = (((romDegrees * gearboxRatio) / 360) / (RPM / 60)) * 1000; //ms 
 }
 
 void loop() { // Super-Loop for CPM functionality
@@ -44,30 +47,30 @@ void loop() { // Super-Loop for CPM functionality
   // Running motor
   if (abs(pressureFeedback) > resistanceLevel || isRunning == false) {
     vesc.setDuty(0.0); // stop motor
+    //vesc.setDuty(pressureFeedback);
 
-  } else {  
+  } else { vesc.setRPM(RPM); }
+  
+  // Increment count if 125ms has passed
+  if (millis() - timeLast > timeIncrement) {
+    timeLast += timeIncrement;
+    romCount++;
+    Serial.println("Time incremented.");
+  } 
+
+  // Change direction of motor and restart count
+  if (romCount >= romTime/timeIncrement) {
+    vesc.setDuty(0.0);
+    delay(1000);
+
+    RPM = RPM * (-1);
+    romCount = 0;
+    timeLast = millis();
+
+    Serial.print("New RPM: ");
+    Serial.println(RPM, DEC);
     vesc.setRPM(RPM);
-
-    // Increment count if 125ms has passed
-    if (millis() - timeLast > timeIncrement) {
-      timeLast += timeIncrement;
-      romCount++;
-      Serial.println("Time incremented.");
-    } 
-
-    // Change direction of motor and restart count
-    if (romCount >= romTime/timeIncrement) {
-      vesc.setDuty(0.0);
-      delay(1000);
-
-      RPM = RPM * (-1);
-      romCount = 0;
-      timeLast = millis();
-
-      Serial.print("New RPM: ");
-      Serial.println(RPM, DEC);
-      vesc.setRPM(RPM);
-    }
+  }
 
     // If arm is opening, we can increment romTime by a unit of timeIncrement. 
     // This will increase the ROM experienced
@@ -98,7 +101,9 @@ void loop() { // Super-Loop for CPM functionality
         romDegrees = atoi(message[1])*100 
                   + atoi(message[2])*10 
                   + atoi(message[3]);
-        romTime = (romDegrees / ((RPM / 60) * 4)) * 1000; // (Theta / ()
+        romTime = (((romDegrees * gearboxRatio) / 360) 
+                  / (RPM / 60)) * 1000; //ms
+        //(romDegrees / ((RPM / 60) * 4)) * 1000; // (Theta / ()
         Serial.print("NEW ROM: ");
         Serial.println(romDegrees, DEC);
         Serial.print("Movement duration (ms): ");
@@ -127,7 +132,9 @@ void loop() { // Super-Loop for CPM functionality
       break;
 
       //This setting allows the user to move the arm based on FSR data
-      case '6': break;
+      case '6': 
+        
+      break;
 
       default: break;
     } 
